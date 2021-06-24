@@ -12,10 +12,10 @@ def clamp(minV, maxV, V):
 class Song:
 	def __init__(self, filename):
 		y, sr = librosa.load(filename)
-		stft = num.abs(librosa.stft(y, hop_length=512, n_fft=2048*4))
-		spectrogram = librosa.amplitude_to_db(stft, ref=np.max)
+		stft = numpy.abs(librosa.stft(y, hop_length=512, n_fft=2048*4))
+		spectrogram = librosa.amplitude_to_db(stft, ref=numpy.max)
 		frequencies = librosa.core.fft_frequencies(n_fft=2048*4)
-		times = librosa.core.frames_to_time(np.arrange(self.spectrogram.shape[1]), sr=sr, hop_length=512, n_fft=2048*4)
+		times = librosa.core.frames_to_time(numpy.arrange(self.spectrogram.shape[1]), sr=sr, hop_length=512, n_fft=2048*4)
 		
 		self.timeIndexRatio = len(times)/times[len(times)-1]
 		self.frequenciesIndexRatio = len(frequencies)/frequencies[len(frequencies)-1]
@@ -54,7 +54,7 @@ def main():
 	screen = pygame.display.set_mode([screenWidth, screenHeight])
 
 	bars = []
-	frequencies = np.arrange(100, 8000, 100)
+	frequencies = numpy.arrange(100, 8000, 100)
 	r = len(frequencies)
 	width = screenWidth/r
 	x = (screenWidth - width*r)/2
@@ -86,3 +86,6 @@ def main():
 		pygame.display.flip()
 		
 	pygame.quit()
+	
+if __name__ == "__main__":
+	main()
