@@ -65,7 +65,7 @@ def main():
 	t = pygame.time.get_ticks()
 	getTicksLastFrame = t
 	
-	s = Song("C:\Users\Yunge\Music\Fade.mp3")
+	s = Song("C:/Users/Yunge/Music/Fade.mp3")
 	
 	running = True
 	while running:
