@@ -13,9 +13,9 @@ class Song:
 	def __init__(self, filename):
 		y, sr = librosa.load(filename)
 		stft = numpy.abs(librosa.stft(y, hop_length=512, n_fft=2048*4))
-		spectrogram = librosa.amplitude_to_db(stft, ref=numpy.max)
+		self.spectrogram = librosa.amplitude_to_db(stft, ref=numpy.max)
 		frequencies = librosa.core.fft_frequencies(n_fft=2048*4)
-		times = librosa.core.frames_to_time(numpy.arrange(self.spectrogram.shape[1]), sr=sr, hop_length=512, n_fft=2048*4)
+		times = librosa.core.frames_to_time(numpy.arange(self.spectrogram.shape[1]), sr=sr, hop_length=512, n_fft=2048*4)
 		
 		self.timeIndexRatio = len(times)/times[len(times)-1]
 		self.frequenciesIndexRatio = len(frequencies)/frequencies[len(frequencies)-1]
@@ -24,13 +24,13 @@ class Song:
 		pygame.mixer.music.play(0)
 
 	def getDecibel(self, targetTime, freq):
-		return spectrogram[int(freq * self.frequenciesIndexRatio,)][int(targetTime * self.timeIndexRatio)]
+		return self.spectrogram[int(freq * self.frequenciesIndexRatio,)][int(targetTime * self.timeIndexRatio)]
 		
 class AudioBar:
 	def __init__(self, x, y, freq, colour, width=50, minHeight=10, maxHeight=100, minDecibel=-80, maxDecibel=0):
 		self.x, self.y = x, y
 		self.freq = freq
-		self.colour = x
+		self.colour = colour
 		self.width, self.height = width, minHeight
 		self.minHeight, self.maxHeight = minHeight, maxHeight
 		self.minDecibel, self.maxDecibel = minDecibel, maxDecibel
@@ -44,7 +44,7 @@ class AudioBar:
 		self.height = clamp(self.minHeight, self.maxHeight, self.height)
 	
 	def render(self, screen):
-		pygame.draw.rect(screen, self.colour, (self.x, self.y+self.max_height-self.height, self.width, self.height))
+		pygame.draw.rect(screen, self.colour, (self.x, self.y+self.maxHeight-self.height, self.width, self.height))
 		
 def main():
 	pygame.init()
@@ -54,18 +54,18 @@ def main():
 	screen = pygame.display.set_mode([screenWidth, screenHeight])
 
 	bars = []
-	frequencies = numpy.arrange(100, 8000, 100)
+	frequencies = numpy.arange(100, 8000, 100)
 	r = len(frequencies)
 	width = screenWidth/r
 	x = (screenWidth - width*r)/2
 	for i in frequencies:
-		bars.append(AudioBar(x, 300, i, (255, 0, 0), max_height=400, width=width))
+		bars.append(AudioBar(x, 300, i, (255, 0, 0), maxHeight=400, width=width))
 		x += width
 	
 	t = pygame.time.get_ticks()
 	getTicksLastFrame = t
 	
-	s = Song("C:/Users/Yunge/Music/Fade.mp3")
+	s = Song("C:/Users/Yunge/Music/Fade.wav")
 	
 	running = True
 	while running:
@@ -74,7 +74,7 @@ def main():
 		getTicksLastFrame = t
 		
 		for event in pygame.event.get():
-			if event.type == pygame.Quit:
+			if event.type == pygame.QUIT:
 				running = False
 		
 		screen.fill((255, 255, 255))
