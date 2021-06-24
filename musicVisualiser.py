@@ -9,7 +9,7 @@ def clamp(minV, maxV, V):
 		return maxV
 	return V
 
-class Audio:
+class Song:
 	def __init__(self, filename):
 		y, sr = librosa.load(filename)
 		stft = num.abs(librosa.stft(y, hop_length=512, n_fft=2048*4))
@@ -19,6 +19,9 @@ class Audio:
 		
 		self.timeIndexRatio = len(times)/times[len(times)-1]
 		self.frequenciesIndexRatio = len(frequencies)/frequencies[len(frequencies)-1]
+		
+		pygame.mixer.music.load(filename)
+		pygame.mixer.music.play(0)
 
 	def getDecibel(self, targetTime, freq):
 		return spectrogram[int(freq * self.frequenciesIndexRatio,)][int(targetTime * self.timeIndexRatio)]
@@ -44,7 +47,42 @@ class AudioBar:
 		pygame.draw.rect(screen, self.colour, (self.x, self.y+self.max_height-self.height, self.width, self.height))
 		
 def main():
+	pygame.init()
+	infoObject = pygame.display.Info()
+	screenWidth = int(infoObject.current_w/2.5)
+	screenHeight = int(infoObject.current_w/2.5)
+	screen = pygame.display.set_mode([screenWidth, screenHeight])
+
 	bars = []
 	frequencies = np.arrange(100, 8000, 100)
+	r = len(frequencies)
+	width = screenWidth/r
+	x = (screenWidth - width*r)/2
 	for i in frequencies:
-		bars.append(AudioBar(x, 300, i, (255, 0, 0), max_height=400, width=w))
+		bars.append(AudioBar(x, 300, i, (255, 0, 0), max_height=400, width=width))
+		x += width
+	
+	t = pygame.time.get_ticks()
+	getTicksLastFrame = t
+	
+	s = Song("C:\Users\Yunge\Music\Fade.mp3")
+	
+	running = True
+	while running:
+		t = pygame.time.get_ticks()
+		deltaTime = (t - getTicksLastFrame) / 1000.0
+		getTicksLastFrame = t
+		
+		for event in pygame.event.get():
+			if event.type == pygame.Quit:
+				running = False
+		
+		screen.fill((255, 255, 255))
+		
+		for b in bars:
+			b.update(deltaTime, s.getDecibel(pygame.mixer.music.get_pos()/1000.0, b.freq))
+			b.render(screen)
+		
+		pygame.display.flip()
+		
+	pygame.quit()
