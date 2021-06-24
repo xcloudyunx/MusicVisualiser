@@ -12,10 +12,11 @@ def clamp(minV, maxV, V):
 class Song:
 	def __init__(self, filename):
 		y, sr = librosa.load(filename)
-		stft = numpy.abs(librosa.stft(y, hop_length=512, n_fft=2048*4))
+		n_fft = 2048*4
+		stft = numpy.abs(librosa.stft(y, hop_length=512, n_fft=n_fft))
 		self.spectrogram = librosa.amplitude_to_db(stft, ref=numpy.max)
-		frequencies = librosa.core.fft_frequencies(n_fft=2048*4)
-		times = librosa.core.frames_to_time(numpy.arange(self.spectrogram.shape[1]), sr=sr, hop_length=512, n_fft=2048*4)
+		frequencies = librosa.core.fft_frequencies(n_fft=n_fft)
+		times = librosa.core.frames_to_time(numpy.arange(self.spectrogram.shape[1]), sr=sr, hop_length=512, n_fft=n_fft)
 		
 		self.timeIndexRatio = len(times)/times[len(times)-1]
 		self.frequenciesIndexRatio = len(frequencies)/frequencies[len(frequencies)-1]
@@ -24,7 +25,7 @@ class Song:
 		pygame.mixer.music.play(0)
 
 	def getDecibel(self, targetTime, freq):
-		return self.spectrogram[int(freq * self.frequenciesIndexRatio,)][int(targetTime * self.timeIndexRatio)]
+		return self.spectrogram[int(freq * self.frequenciesIndexRatio)][int(targetTime * self.timeIndexRatio)]
 		
 class AudioBar:
 	def __init__(self, x, y, freq, colour, width=50, minHeight=10, maxHeight=100, minDecibel=-80, maxDecibel=0):
@@ -54,12 +55,14 @@ def main():
 	screen = pygame.display.set_mode([screenWidth, screenHeight])
 
 	bars = []
-	frequencies = numpy.arange(100, 8000, 100)
+	frequencies = numpy.arange(0, 10000, 100)
 	r = len(frequencies)
 	width = screenWidth/r
+	print(width, screenWidth, r)
 	x = (screenWidth - width*r)/2
 	for i in frequencies:
 		bars.append(AudioBar(x, 300, i, (255, 0, 0), maxHeight=400, width=width))
+		print(x)
 		x += width
 	
 	t = pygame.time.get_ticks()
