@@ -1,13 +1,24 @@
 import librosa, numpy, pygame, math
 
-#https://medium.com/analytics-vidhya/how-to-create-a-music-visualizer-7fad401f5a69
-
 def clamp(minV, maxV, V):
 	if V < minV:
 		return minV
 	if V > maxV:
 		return maxV
 	return V
+	
+def rotate(pos, angle, cor):
+	angle = -math.radians(angle)
+	s = math.sin(angle)
+	c = math.cos(angle)
+	oldX, oldY = pos
+	oldX -= cor[0]
+	oldY -= cor[1]
+	x = c*oldX - s*oldY
+	y = s*oldX + c*oldY
+	x += cor[0]
+	y += cor[1]
+	return (x, y)
 
 class Song:
 	def __init__(self, filename):
@@ -39,24 +50,13 @@ class Rect:
 		return self.points
 		
 	def rotate(self, angle, cor):
-		angle = math.radians(angle)
-		s = math.sin(angle)
-		c = math.cos(angle)
-		for i in range(4):
-			x, y = self.points[i]
-			x -= cor[0]
-			y -= cor[1]
-			x = c*x - s*y
-			y = s*x + c*y
-			x += cor[0]
-			y += cor[1]
-			self.points[i] = (x, y)
+		self.points = [rotate(pos, angle, cor) for pos in self.points]
 		
 class AudioBar:
-	def __init__(self, x, y, freq, colour, angle, speed=10, width=50, minHeight=0, maxHeight=50, minDecibel=-80, maxDecibel=0):
-		self.x, self.y = x, y
+	def __init__(self, freq, colour, centre, angle, radius=100, speed=10, width=50, minHeight=5, maxHeight=50, minDecibel=-80, maxDecibel=0):
 		self.freq = freq
 		self.colour = colour
+		self.centre = centre
 		self.width, self.height = width, minHeight
 		self.minHeight, self.maxHeight = minHeight, maxHeight
 		self.minDecibel, self.maxDecibel = minDecibel, maxDecibel
@@ -65,6 +65,11 @@ class AudioBar:
 		
 		self.angle = angle
 		self.speed = speed
+		
+		self.x, self.y = centre[0], centre[1]+radius
+		
+	def changeAngle(self, dt, angle):
+		self.angle += dt*angle
 		
 	def getFreq(self):
 		return self.freq
@@ -76,32 +81,31 @@ class AudioBar:
 		self.height = clamp(self.minHeight, self.maxHeight, self.height)
 		
 		self.rect = Rect(self.x, self.y, self.width, self.height)
-		self.rect.rotate(self.angle, (self.x, self.y))
+		self.rect.rotate(self.angle, self.centre)
 	
 	def render(self, screen):
-		#pygame.draw.rect(screen, self.colour, (self.x, self.y+self.maxHeight-self.height, self.width, self.height))
 		pygame.draw.polygon(screen, self.colour, self.rect.getPoints())
 		
 		
 def main():
 	pygame.init()
+	
+	s = Song("C:/Users/Yunge/Music/Fade.wav")
+	
 	infoObject = pygame.display.Info()
 	screenWidth = int(infoObject.current_w/2.5)
 	screenHeight = int(infoObject.current_w/2.5)
 	screen = pygame.display.set_mode([screenWidth, screenHeight])
-	
-	s = Song("C:/Users/Yunge/Music/Fade.wav")
 
 	bars = []
 	frequencies = numpy.arange(0, s.getMaxFrequency(), 100)
 	r = len(frequencies)
 	width = screenWidth/r
-	x = (screenWidth - width*r)/2
 	angle = 0
-	angleDelta = 360/r
+	angleDelta = 180/r
 	for i in frequencies:
-		bars.append(AudioBar(x, 300, i, (255, 0, 0), angle=angle, speed=15, maxHeight=400, width=width))
-		x += width
+		bars.append(AudioBar(i, (255, 0, 0), centre=(screenWidth/2, screenHeight/2), angle=angle, radius=100, speed=15, maxHeight=200, width=width))
+		bars.append(AudioBar(i, (255, 0, 0), centre=(screenWidth/2, screenHeight/2), angle=360-angle, radius=100, speed=15, maxHeight=200, width=width))
 		angle += angleDelta
 	
 	t = pygame.time.get_ticks()
@@ -118,10 +122,14 @@ def main():
 				running = False
 		
 		screen.fill((255, 255, 255))
+		#pygame.draw.circle(screen, (0, 0, 0), (screenWidth/2, screenHeight/2), 100)
 		
 		for b in bars:
+			b.changeAngle(deltaTime, 5)
 			b.update(deltaTime, s.getDecibel(pygame.mixer.music.get_pos()/1000.0, b.getFreq()))
 			b.render(screen)
+			#if b == bars[len(bars)//2]:
+			#	break
 		
 		pygame.display.flip()
 		
