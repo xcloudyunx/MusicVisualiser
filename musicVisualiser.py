@@ -1,4 +1,4 @@
-import librosa, numpy, pygame
+import librosa, numpy, pygame, math
 
 #https://medium.com/analytics-vidhya/how-to-create-a-music-visualizer-7fad401f5a69
 
@@ -13,10 +13,11 @@ class Song:
 	def __init__(self, filename):
 		y, sr = librosa.load(filename)
 		n_fft = 2048*4
-		stft = numpy.abs(librosa.stft(y, hop_length=512, n_fft=n_fft))
+		hop_length = 512
+		stft = numpy.abs(librosa.stft(y, hop_length=hop_length, n_fft=n_fft))
 		self.spectrogram = librosa.amplitude_to_db(stft, ref=numpy.max)
 		frequencies = librosa.core.fft_frequencies(n_fft=n_fft)
-		times = librosa.core.frames_to_time(numpy.arange(self.spectrogram.shape[1]), sr=sr, hop_length=512, n_fft=n_fft)
+		times = librosa.core.frames_to_time(numpy.arange(self.spectrogram.shape[1]), sr=sr, hop_length=hop_length, n_fft=n_fft)
 		
 		self.timeIndexRatio = len(times)/times[len(times)-1]
 		self.frequenciesIndexRatio = len(frequencies)/frequencies[len(frequencies)-1]
@@ -28,7 +29,7 @@ class Song:
 		return self.spectrogram[int(freq * self.frequenciesIndexRatio)][int(targetTime * self.timeIndexRatio)]
 		
 class AudioBar:
-	def __init__(self, x, y, freq, colour, width=50, minHeight=10, maxHeight=100, minDecibel=-80, maxDecibel=0):
+	def __init__(self, x, y, freq, colour, angle, width=50, minHeight=10, maxHeight=100, minDecibel=-80, maxDecibel=0):
 		self.x, self.y = x, y
 		self.freq = freq
 		self.colour = colour
@@ -38,14 +39,21 @@ class AudioBar:
 		
 		self.decibelHeightRatio = (maxHeight-minHeight)/(maxDecibel-minDecibel)
 		
+		self.angle = angle
+		
 	def update(self, dt, decibel):
 		desiredHeight = decibel*self.decibelHeightRatio + self.maxHeight
 		speed = (desiredHeight-self.height)/0.1
 		self.height += speed * dt
 		self.height = clamp(self.minHeight, self.maxHeight, self.height)
+		
+		self.rect = Rect(self.x, self.y, self.width, self.height)	# need to define Rect and rotate functions
+		self.rect.rotate(self.angle)
 	
 	def render(self, screen):
-		pygame.draw.rect(screen, self.colour, (self.x, self.y+self.maxHeight-self.height, self.width, self.height))
+		#pygame.draw.rect(screen, self.colour, (self.x, self.y+self.maxHeight-self.height, self.width, self.height))
+		pygame.draw.polygon(screen, self.colour, self.rect.points)
+		
 		
 def main():
 	pygame.init()
@@ -60,10 +68,13 @@ def main():
 	width = screenWidth/r
 	print(width, screenWidth, r)
 	x = (screenWidth - width*r)/2
+	angle = 0
+	angleDelta = 360/r
 	for i in frequencies:
-		bars.append(AudioBar(x, 300, i, (255, 0, 0), maxHeight=400, width=width))
+		bars.append(AudioBar(x, 300, i, (255, 0, 0), maxHeight=400, width=width, angle=angle))
 		print(x)
 		x += width
+		angle += angleDelta
 	
 	t = pygame.time.get_ticks()
 	getTicksLastFrame = t
