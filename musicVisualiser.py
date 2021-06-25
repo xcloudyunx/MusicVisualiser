@@ -128,14 +128,11 @@ def main():
 				running = False
 		
 		screen.fill((50, 50, 50))
-		#pygame.draw.circle(screen, (0, 0, 0), (screenWidth/2, screenHeight/2), 100)
 		
 		for b in bars:
 			b.changeAngle(deltaTime, s.getTempo()/10)
 			b.update(deltaTime, s.getDecibel(pygame.mixer.music.get_pos()/1000.0, b.getFreq()))
 			b.render(screen)
-			#if b == bars[len(bars)//2]:
-			#	break
 		
 		pygame.display.flip()
 		
