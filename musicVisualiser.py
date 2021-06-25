@@ -35,12 +35,18 @@ class Song:
 		
 		pygame.mixer.music.load(filename)
 		pygame.mixer.music.play(0)
+		
+		onsetEnv = librosa.onset.onset_strength(y, sr=sr)
+		self.tempo = librosa.beat.tempo(onset_envelope=onsetEnv, sr=sr)[0]
 
 	def getDecibel(self, targetTime, freq):
 		return self.spectrogram[int(freq * self.frequenciesIndexRatio)][int(targetTime * self.timeIndexRatio)]
 		
 	def getMaxFrequency(self):
 		return self.frequencies[len(self.frequencies)-1]
+		
+	def getTempo(self):
+		return self.tempo
 		
 class Rect:
 	def __init__(self, x, y, width, height):
@@ -53,7 +59,7 @@ class Rect:
 		self.points = [rotate(pos, angle, cor) for pos in self.points]
 		
 class AudioBar:
-	def __init__(self, freq, colour, centre, angle, radius=100, speed=10, width=50, minHeight=5, maxHeight=50, minDecibel=-80, maxDecibel=0):
+	def __init__(self, freq, colour, centre, angle, radius=100, speed=10, width=50, minHeight=10, maxHeight=50, minDecibel=-80, maxDecibel=0):
 		self.freq = freq
 		self.colour = colour
 		self.centre = centre
@@ -121,11 +127,11 @@ def main():
 			if event.type == pygame.QUIT:
 				running = False
 		
-		screen.fill((255, 255, 255))
+		screen.fill((50, 50, 50))
 		#pygame.draw.circle(screen, (0, 0, 0), (screenWidth/2, screenHeight/2), 100)
 		
 		for b in bars:
-			b.changeAngle(deltaTime, 5)
+			b.changeAngle(deltaTime, s.getTempo()/10)
 			b.update(deltaTime, s.getDecibel(pygame.mixer.music.get_pos()/1000.0, b.getFreq()))
 			b.render(screen)
 			#if b == bars[len(bars)//2]:
