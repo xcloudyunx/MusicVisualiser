@@ -27,26 +27,34 @@ class Song:
 		hop_length = 512
 		stft = numpy.abs(librosa.stft(y, hop_length=hop_length, n_fft=n_fft))
 		self.spectrogram = librosa.amplitude_to_db(stft, ref=numpy.max)
-		self.frequencies = librosa.fft_frequencies(sr=sr, n_fft=n_fft)
+		frequencies = librosa.fft_frequencies(sr=sr, n_fft=n_fft)
 		times = librosa.frames_to_time(numpy.arange(self.spectrogram.shape[1]), sr=sr, hop_length=hop_length, n_fft=n_fft)
 		
 		self.timeIndexRatio = len(times)/times[len(times)-1]
-		self.frequenciesIndexRatio = len(self.frequencies)/self.frequencies[len(self.frequencies)-1]
+		self.frequenciesIndexRatio = len(frequencies)/frequencies[len(frequencies)-1]
 		
 		pygame.mixer.music.load(filename)
 		pygame.mixer.music.play(0)
 		
+		self.maxFrequency = frequencies[len(frequencies)-1]
+		
 		onsetEnv = librosa.onset.onset_strength(y, sr=sr)
 		self.tempo = librosa.beat.tempo(onset_envelope=onsetEnv, sr=sr)[0]
+		
+		self.amplitude = numpy.mean(self.spectrogram, axis=0)											# normal trigger
+		#self.amplitude = numpy.mean(self.spectrogram[0:int(100*self.frequenciesIndexRatio)], axis=0)	# bass trigger
 
 	def getDecibel(self, targetTime, freq):
 		return self.spectrogram[int(freq * self.frequenciesIndexRatio)][int(targetTime * self.timeIndexRatio)]
 		
 	def getMaxFrequency(self):
-		return self.frequencies[len(self.frequencies)-1]
+		return self.maxFrequency
 		
 	def getTempo(self):
 		return self.tempo
+		
+	def getAmplitude(self, targetTime):
+		return self.amplitude[int(targetTime * self.timeIndexRatio)]
 		
 class Rect:
 	def __init__(self, x, y, width, height):
@@ -59,7 +67,7 @@ class Rect:
 		self.points = [rotate(pos, angle, cor) for pos in self.points]
 		
 class AudioBar:
-	def __init__(self, freq, colour, centre, angle, radius=100, speed=10, width=50, minHeight=10, maxHeight=50, minDecibel=-80, maxDecibel=0):
+	def __init__(self, freq, colour, centre, angle, minRadius=50, maxRadius=200, speed=15, width=50, minHeight=10, maxHeight=200, minDecibel=-80, maxDecibel=0):
 		self.freq = freq
 		self.colour = colour
 		self.centre = centre
@@ -72,10 +80,23 @@ class AudioBar:
 		self.angle = angle
 		self.speed = speed
 		
-		self.x, self.y = centre[0], centre[1]+radius
+		self.radius = minRadius
+		self.minRadius, self.maxRadius = minRadius, maxRadius
+		self.decibelRadiusRatio = (maxRadius - minRadius)/(maxDecibel-minDecibel)
+		
+		self.x, self.y = centre[0], centre[1]+self.radius
 		
 	def changeAngle(self, dt, angle):
 		self.angle += dt*angle
+		self.angle %= 360
+		
+	def changeRadius(self, dt, decibel):
+		desiredRadius = decibel*self.decibelRadiusRatio + self.maxRadius
+		speed = (desiredRadius - self.radius)*self.speed
+		self.radius += speed * dt
+		self.radius = clamp(self.minRadius, self.maxRadius, self.radius)
+		
+		self.y = self.centre[1]+self.radius
 		
 	def getFreq(self):
 		return self.freq
@@ -96,7 +117,7 @@ class AudioBar:
 def main():
 	pygame.init()
 	
-	s = Song("C:/Users/Yunge/Music/Fade.wav")
+	s = Song("C:/Users/Yunge/Music/Goosebumps (Remix).wav")
 	
 	infoObject = pygame.display.Info()
 	screenWidth = int(infoObject.current_w/2.5)
@@ -104,32 +125,36 @@ def main():
 	screen = pygame.display.set_mode([screenWidth, screenHeight])
 
 	bars = []
-	frequencies = numpy.arange(0, s.getMaxFrequency(), 100)
+	frequencies = numpy.arange(0, s.getMaxFrequency()-1000, 100)
 	r = len(frequencies)
 	width = screenWidth/r
 	angle = 0
 	angleDelta = 180/r
 	for i in frequencies:
-		bars.append(AudioBar(i, (255, 0, 0), centre=(screenWidth/2, screenHeight/2), angle=angle, radius=100, speed=15, maxHeight=200, width=width))
-		bars.append(AudioBar(i, (255, 0, 0), centre=(screenWidth/2, screenHeight/2), angle=360-angle, radius=100, speed=15, maxHeight=200, width=width))
+		bars.append(AudioBar(i, (255, 0, 0), centre=(screenWidth/2, screenHeight/2), angle=angle, width=width))
+		bars.append(AudioBar(i, (255, 0, 0), centre=(screenWidth/2, screenHeight/2), angle=360-angle, width=-width))
 		angle += angleDelta
 	
 	t = pygame.time.get_ticks()
 	getTicksLastFrame = t
 	
-	running = True
-	while running:
+	while True:
+		if not pygame.mixer.music.get_busy():
+			break
+	
 		t = pygame.time.get_ticks()
 		deltaTime = (t - getTicksLastFrame) / 1000.0
 		getTicksLastFrame = t
 		
 		for event in pygame.event.get():
 			if event.type == pygame.QUIT:
-				running = False
+				break
 		
 		screen.fill((50, 50, 50))
 		
+		amp = s.getAmplitude(pygame.mixer.music.get_pos()/1000.0)
 		for b in bars:
+			b.changeRadius(deltaTime, amp)
 			b.changeAngle(deltaTime, s.getTempo()/10)
 			b.update(deltaTime, s.getDecibel(pygame.mixer.music.get_pos()/1000.0, b.getFreq()))
 			b.render(screen)
