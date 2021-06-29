@@ -117,7 +117,7 @@ class AudioBar:
 def main():
 	pygame.init()
 	
-	s = Song("C:/Users/Yunge/Music/Goosebumps (Remix).wav")
+	s = Song(filename)
 	
 	infoObject = pygame.display.Info()
 	screenWidth = int(infoObject.current_w/2.5)
@@ -138,9 +138,10 @@ def main():
 	t = pygame.time.get_ticks()
 	getTicksLastFrame = t
 	
-	while True:
+	running = True
+	while running:
 		if not pygame.mixer.music.get_busy():
-			break
+			running = False
 	
 		t = pygame.time.get_ticks()
 		deltaTime = (t - getTicksLastFrame) / 1000.0
@@ -148,7 +149,7 @@ def main():
 		
 		for event in pygame.event.get():
 			if event.type == pygame.QUIT:
-				break
+				running = False
 		
 		screen.fill((50, 50, 50))
 		
